@@ -157,7 +157,7 @@ def insert_dim_clients(content):
     df_insert = pl.DataFrame(content)
     df_insert = df_insert.with_columns(
         pl.col("data_cadastro").str.strptime(pl.Date, format="%Y-%m-%d").alias("data_cadastro")
-    ).with_columns(pl.lit(date(2023, 12, 31)).alias("effective_date"))\
+    ).with_columns(pl.lit(date.now()).alias("effective_date"))\
     .with_columns(pl.lit(date(2149, 6, 6)).alias("end_date"))\
     .with_columns(pl.lit(1).alias("is_current"))
     
