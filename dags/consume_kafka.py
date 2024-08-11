@@ -161,6 +161,19 @@ def insert_dim_clients(content):
     .with_columns(pl.lit(date(2149, 6, 6)).alias("end_date"))\
     .with_columns(pl.lit(1).alias("is_current"))
     
+    df_insert = df_insert.groupby("email").apply(
+        lambda group: group.with_columns([
+            pl.when(pl.col("data_cadastro") == pl.col("data_cadastro").max())
+            .then(1)
+            .otherwise(0)
+            .alias("is_current"),
+
+            pl.when(pl.col("data_cadastro") != pl.col("data_cadastro").max())
+            .then(pl.col("effective_date"))
+            .otherwise(pl.col("end_date"))
+            .alias("end_date")
+        ])
+    )
     #lendo a tabela para fazer o scd2
     df_table = read_table()
     if df_table.is_empty():
