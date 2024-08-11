@@ -118,6 +118,144 @@ def consume_kafka():
         raise Exception(e)
         #create_log(status = 'failure', message = e)
 
+import polars as pl
+from datetime import date
+from clickhouse_driver import Client
+
+# Conexão ao servidor ClickHouse
+client_ch = Client(
+    host='clickhouse',       # Endereço do servidor ClickHouse
+    port=9000,              # Porta padrão para conexões TCP
+    user='default',         # Usuário (padrão é 'default')
+    password='',            # Senha (por padrão, vazio)
+    database='default',     # Nome do banco de dados (por padrão, 'default')
+)
+
+def read_table():
+    client_ch.execute('''
+    CREATE TABLE IF NOT EXISTS dim_clients (
+        surrogate_key UInt64 DEFAULT generateUUIDv4(),
+        nome String,
+        sobrenome String,
+        idade Int32,
+        email String,
+        data_cadastro Date,
+        effective_date Date,
+        end_date Date,
+        is_current UInt8
+    ) ENGINE = MergeTree()
+    ORDER BY (nome, sobrenome, effective_date)
+    ''')
+    result = client_ch.execute(f"SELECT * FROM dim_clients where is_current = 1")
+    columns = ['nome', 'sobrenome', 'idade', 'email', 'data_cadastro',  'effective_date', 'end_date', 'is_current']
+    # Criar o DataFrame Polars a partir dos resultados
+    df_table = pl.DataFrame(result, schema=columns) 
+    return df_table
+
+def insert_dim_clients(content):
+    #Criando dataframe polars com os dados a serem inseridos
+    df_insert = pl.DataFrame(content)
+    df_insert = df_insert.with_columns(
+        pl.col("data_cadastro").str.strptime(pl.Date, format="%Y-%m-%d").alias("data_cadastro")
+    ).with_columns(pl.lit(date(2023, 12, 31)).alias("effective_date"))\
+    .with_columns(pl.lit(date(2149, 6, 6)).alias("end_date"))\
+    .with_columns(pl.lit(1).alias("is_current"))
+    
+    #lendo a tabela para fazer o scd2
+    df_table = read_table()
+    if df_table.is_empty():
+        data = df_insert.to_dicts()
+        
+        # Inserir os dados no ClickHouse
+        client_ch.execute(
+            'INSERT INTO dim_clients (nome, sobrenome, idade, email, data_cadastro, effective_date, end_date, is_current) VALUES',
+            [(row['nome'], row['sobrenome'], row['idade'], row['email'], row['data_cadastro'], row['effective_date'], row['end_date'], row['is_current']) for row in data]
+        )
+        print("Dados inseridos com sucesso")
+    else:  
+        """
+        Nesse caso, eu utilizo o email como chave primaria (poderia ser id, cpf, etc...), faço o join com a tabela para ver os emails repetidos
+        que estão sendo inseridos e filtro pela data de cadastro para garantir que os dados repetidos que estamos inserindo
+        sao o cadastro mais atualizado.
+        
+        """
+        df_joined = df_insert.join(
+            df_table, 
+            on="email", 
+            how="inner"
+        ).filter(
+            pl.col("data_cadastro").cast(pl.Date) >= pl.col("data_cadastro_right").cast(pl.Date)
+        )
+        
+        # Linhas a serem inativadas com is_current = 0 e fechamento do end date
+        df_update_inactive = df_joined.select([
+            pl.col("nome"),
+            pl.col("sobrenome"),
+            pl.col("idade"),
+            pl.col("email"),
+            pl.col("data_cadastro_right").alias("data_cadastro"),
+            pl.col("effective_date_right").alias("effective_date"),
+            pl.col("effective_date").alias("end_date"),
+            pl.lit(0).alias("is_current")
+        ])
+        for row in df_update_inactive.to_dicts():
+            client_ch.execute(
+                """
+                ALTER TABLE dim_clients
+                UPDATE end_date = %(end_date)s,
+                       is_current = %(is_current)s
+                WHERE email = %(email)s
+                """,
+                {'end_date': row['end_date'], 'is_current': row['is_current'], 'email': row['email']}
+            )
+        
+        """ 
+        caso onde o cliente a ser inserido ja esta na base mas tem a data de cadastro menor do
+        que a já cadastrada, nesse caso, o dado é inserido mas o dado ja persistido
+        é mantido como o dado corrente porque tem a data de cadastro maior
+        
+        """
+        df_joined = df_insert.join(
+            df_table, 
+            on="email", 
+            how="inner"
+        ).filter(
+            pl.col("data_cadastro").cast(pl.Date) < pl.col("data_cadastro_right").cast(pl.Date)
+        )
+        # Selecionar as colunas e renomear conforme necessário
+        df_update_inactive_new = df_joined.select([
+            pl.col("nome"),
+            pl.col("sobrenome"),
+            pl.col("idade"),
+            pl.col("email"),
+            pl.col("data_cadastro"),
+            pl.col("effective_date"),
+            pl.col("effective_date").alias("end_date"),
+            pl.lit(0).alias("is_current")
+        ])
+        df_insert = df_insert.join(
+            df_update_inactive_new, 
+            on="email", 
+            how="left"
+        ).select([
+            pl.col("nome"),
+            pl.col("sobrenome"),
+            pl.col("idade"),
+            pl.col("email"),
+            pl.col("data_cadastro"),
+            pl.when(pl.col("nome_right").is_not_null()).then(pl.col("effective_date_right")).otherwise(pl.col("effective_date")).alias("effective_date"),
+            pl.when(pl.col("nome_right").is_not_null()).then(pl.col("end_date_right")).otherwise(pl.col("end_date")).alias("end_date"),
+             pl.when(pl.col("nome_right").is_not_null()).then(pl.col("is_current_right")).otherwise(pl.col("is_current")).alias("is_current"),
+        ])
+        # Converta o DataFrame para um formato que pode ser enviado ao ClickHouse
+        data = df_insert.to_dicts()
+        
+        # Inserir os dados no ClickHouse
+        client_ch.execute(
+            'INSERT INTO dim_clients (nome, sobrenome, idade, email, data_cadastro, effective_date, end_date, is_current) VALUES',
+            [(row['nome'], row['sobrenome'], row['idade'], row['email'], row['data_cadastro'], row['effective_date'], row['end_date'], row['is_current']) for row in data]
+        )
+        
 def read_file_from_bronze(**kwargs):
     file_path = kwargs['ti'].xcom_pull(task_ids='kafka_consume_topic_clients')
     print(f"LENDO ARQUIVO ---------- {file_path}")
@@ -135,6 +273,7 @@ def read_file_from_bronze(**kwargs):
         content = json.load(data)
         print(f"Conteúdo do arquivo {file_path}:")
         print(content)
+        insert_dim_clients(content)
     except S3Error as e:
         print(f'Erro ao ler o arquivo: {e}')
     

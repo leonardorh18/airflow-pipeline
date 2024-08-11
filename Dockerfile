@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y \
 
 # Instalar bibliotecas Python necessárias
 RUN pip install --upgrade pip
-RUN pip install kafka-python boto3 clickhouse-driver faker minio pyspark
+RUN pip install kafka-python boto3 clickhouse-driver faker minio polars
 
 # Alterar permissões do diretório
 RUN chown -R airflow:airflow /usr/local/airflow
