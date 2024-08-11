@@ -99,15 +99,16 @@ def consume_kafka():
         consumer.seek(tp, offset_inicial)
         
         print("Aguardando mensagens...")
-        last_message = None
+        
         # Consome mensagens do tópico
         message_list = []
         for message in consumer:
             print(f"Recebido: {message.value}")
-            message_list.append(message.value)
-        if len(message) > 0:
-            insert_bronze(message.value)
-            file = topic_controll.insert_offset(message.offset)
+            message_list.append(json.loads(message.value))
+        if len(message_list) > 0:
+            file = insert_bronze(message_list)
+            topic_controll.insert_offset(message.offset)
+            print(f"------------------ARQUIVO SALVO {file}")
             return file
         else:
             return None
@@ -117,7 +118,12 @@ def consume_kafka():
         raise Exception(e)
         #create_log(status = 'failure', message = e)
 
-def read_file_from_bronze(file_path):
+def read_file_from_bronze(**kwargs):
+    file_path = kwargs['ti'].xcom_pull(task_ids='kafka_consume_topic_clients')
+    print(f"LENDO ARQUIVO ---------- {file_path}")
+    if file_path == None:
+        return None
+    
     client = Minio("minio:9000",
         access_key=ACCESS_KEY,
         secret_key=SECRET_KEY,
@@ -126,7 +132,7 @@ def read_file_from_bronze(file_path):
     
     try:
         data = client.get_object(BUCKET_NAME, file_path)
-        content = data.read().decode('utf-8')
+        content = json.load(data)
         print(f"Conteúdo do arquivo {file_path}:")
         print(content)
     except S3Error as e:
@@ -139,11 +145,15 @@ dag = DAG('consume_clients_kafka', description='Pipeline de ingestão',
           start_date=datetime(2024, 8, 9), catchup=False)
 
 
-consume_task = PythonOperator(task_id='kafka_consume_topic_clients', python_callable=consume_kafka, dag=dag)
+consume_task = PythonOperator(
+    task_id='kafka_consume_topic_clients', 
+    python_callable=consume_kafka,
+    dag=dag)
+
 read_file_task = PythonOperator(
     task_id='read_file_from_minio',
     python_callable=read_file_from_bronze,
-    op_args=[consume_task.output],  # Passa o caminho do arquivo retornado pela `consume_task`
+    provide_context=True,
     dag=dag
 )
 

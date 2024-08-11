@@ -23,7 +23,8 @@ def create_fake_data():
     clientes = []
 
     # Número de registros que você deseja gerar
-    num_registros = 100
+    import random
+    num_registros = random.randint(100, 500)
 
     for _ in range(num_registros):
         cliente = {
