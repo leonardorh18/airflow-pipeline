@@ -147,7 +147,7 @@ def read_table():
     ORDER BY (nome, sobrenome, effective_date)
     ''')
     result = client_ch.execute(f"SELECT * FROM dim_clients where is_current = 1")
-    columns = ['nome', 'sobrenome', 'idade', 'email', 'data_cadastro',  'effective_date', 'end_date', 'is_current']
+    columns = ['surrogate_key','nome', 'sobrenome', 'idade', 'email', 'data_cadastro',  'effective_date', 'end_date', 'is_current']
     # Criar o DataFrame Polars a partir dos resultados
     df_table = pl.DataFrame(result, schema=columns) 
     return df_table
@@ -189,6 +189,7 @@ def insert_dim_clients(content):
         
         # Linhas a serem inativadas com is_current = 0 e fechamento do end date
         df_update_inactive = df_joined.select([
+            pl.col("surrogate_key_right").alias("surrogate_key"),
             pl.col("nome"),
             pl.col("sobrenome"),
             pl.col("idade"),
@@ -204,9 +205,9 @@ def insert_dim_clients(content):
                 ALTER TABLE dim_clients
                 UPDATE end_date = %(end_date)s,
                        is_current = %(is_current)s
-                WHERE email = %(email)s
+                WHERE surrogate_key = %(surrogate_key)s
                 """,
-                {'end_date': row['end_date'], 'is_current': row['is_current'], 'email': row['email']}
+                {'end_date': row['end_date'], 'is_current': row['is_current'], 'surrogate_key': row['email']}
             )
         
         """ 
