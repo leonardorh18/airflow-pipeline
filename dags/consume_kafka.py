@@ -167,16 +167,16 @@ def insert_dim_clients(content):
     
     # Criar uma contagem cumulativa dentro de cada grupo de email para garantir que apenas o primeiro registro seja 'current'
     df_insert = df_insert.with_columns(
-        pl.col("data_cadastro").cum_count(reverse=False).over("email").alias("rank")
+        pl.col("data_cadastro").cumcount(reverse=False).over("email").alias("rank")
     )
     # Atualizar 'is_current' e 'end_date' com base no ranking de email e data cadastro
     df_insert = df_insert.with_columns([
-        pl.when(pl.col("rank") == 1)
+        pl.when(pl.col("rank") == 0)
         .then(pl.lit(1))
         .otherwise(pl.lit(0))
         .alias("is_current"),
     
-        pl.when(pl.col("rank") != 1)
+        pl.when(pl.col("rank") != 0)
         .then(pl.col("effective_date"))
         .otherwise(pl.col("end_date"))
         .alias("end_date")
@@ -221,8 +221,8 @@ def insert_dim_clients(content):
             pl.col("effective_date").alias("end_date"),
             pl.lit(0).alias("is_current")
         ])
-        print('df_update_inactive')
-        print(df_update_inactive)
+        #print('df_update_inactive')
+        #print(df_update_inactive)
         for row in df_update_inactive.to_dicts():
             client_ch.execute(
                 """
@@ -256,8 +256,8 @@ def insert_dim_clients(content):
             pl.col("effective_date").alias("end_date"),
             pl.lit(0).alias("is_current")
         ])
-        print('df_update_inactive_new')
-        print(df_update_inactive_new)
+        #print('df_update_inactive_new')
+        #print(df_update_inactive_new)
         df_insert = df_insert.join(
             df_update_inactive_new, 
             on=["email", "data_cadastro"], 
@@ -272,12 +272,12 @@ def insert_dim_clients(content):
             pl.when(pl.col("nome_right").is_not_null()).then(pl.col("end_date_right")).otherwise(pl.col("end_date")).alias("end_date"),
              pl.when(pl.col("nome_right").is_not_null()).then(pl.col("is_current_right")).otherwise(pl.col("is_current")).alias("is_current"),
         ])
-        print('df_insert')
-        print(df_insert)
+        #print('df_insert')
+        #print(df_insert)
         # Converta o DataFrame para um formato que pode ser enviado ao ClickHouse
         data = df_insert.to_dicts()
-        print("dados a serem inseridos:")
-        print(data)
+        #print("dados a serem inseridos:")
+        #print(data)
         # Inserir os dados no ClickHouse
         client_ch.execute(
             'INSERT INTO dim_clients (nome, sobrenome, idade, email, data_cadastro, effective_date, end_date, is_current) VALUES',
