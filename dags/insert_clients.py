@@ -32,7 +32,7 @@ def create_fake_data():
     
     client_ch.execute('''
     CREATE TABLE IF NOT EXISTS dim_clients (
-        surrogate_key UInt64 DEFAULT generateUUIDv4(),
+        surrogate_key UUID DEFAULT generateUUIDv4(),
         nome String,
         sobrenome String,
         idade Int32,
@@ -44,13 +44,13 @@ def create_fake_data():
     ) ENGINE = MergeTree()
     ORDER BY (nome, sobrenome, effective_date)
     ''')
-    clientes_existentes = client_ch.execute("SELECT nome, sobrenome, idade, email FROM dim_clients where is_current = 1")
+    clientes_existentes = client_ch.execute("SELECT distinct nome, sobrenome, idade, email FROM dim_clients where is_current = 1")
     clientes_existentes_dict = {}
     if len(clientes_existentes) > 0:
         clientes_existentes_dict = {cliente[3]: {"nome": cliente[0], "sobrenome": cliente[1], "idade": cliente[2]} for cliente in clientes_existentes}
     for _ in range(num_registros):
         # Decidir se deve criar um novo cliente ou reutilizar um existente
-        if clientes_existentes_dict and random.random() < 0.2:  # 20% de chance de reutilizar um cliente existente
+        if clientes_existentes_dict and random.random() < 0.3:  # 30% de chance de reutilizar um cliente existente
             email = random.choice(list(clientes_existentes_dict.keys()))
             cliente_base = clientes_existentes_dict[email]
             cliente = {

@@ -134,7 +134,7 @@ client_ch = Client(
 def read_table():
     client_ch.execute('''
     CREATE TABLE IF NOT EXISTS dim_clients (
-        surrogate_key UInt64 DEFAULT generateUUIDv4(),
+        surrogate_key UUID DEFAULT generateUUIDv4(),
         nome String,
         sobrenome String,
         idade Int32,
@@ -189,7 +189,7 @@ def insert_dim_clients(content):
         
         # Linhas a serem inativadas com is_current = 0 e fechamento do end date
         df_update_inactive = df_joined.select([
-            pl.col("surrogate_key_right").alias("surrogate_key"),
+            pl.col("surrogate_key"),
             pl.col("nome"),
             pl.col("sobrenome"),
             pl.col("idade"),
@@ -207,7 +207,7 @@ def insert_dim_clients(content):
                        is_current = %(is_current)s
                 WHERE surrogate_key = %(surrogate_key)s
                 """,
-                {'end_date': row['end_date'], 'is_current': row['is_current'], 'surrogate_key': row['email']}
+                {'end_date': row['end_date'], 'is_current': row['is_current'], 'surrogate_key': row['surrogate_key']}
             )
         
         """ 
