@@ -153,7 +153,7 @@ def read_table():
     return df_table
 
 def insert_dim_clients(content):
-    #Criando dataframe polars com os dados a serem inseridos
+    #Criando dataframe polars com as colunas scd2
     df_insert = pl.DataFrame(content)
     df_insert = df_insert.with_columns(
         pl.col("data_cadastro").str.strptime(pl.Date, format="%Y-%m-%d").alias("data_cadastro")
@@ -161,21 +161,30 @@ def insert_dim_clients(content):
     .with_columns(pl.lit(date(2149, 6, 6)).alias("end_date"))\
     .with_columns(pl.lit(1).alias("is_current"))
     
-    df_insert = df_insert.groupby("email").apply(
-        lambda group: group.with_columns([
-            pl.when(pl.col("data_cadastro") == pl.col("data_cadastro").max())
-            .then(1)
-            .otherwise(0)
-            .alias("is_current"),
-
-            pl.when(pl.col("data_cadastro") != pl.col("data_cadastro").max())
-            .then(pl.col("effective_date"))
-            .otherwise(pl.col("end_date"))
-            .alias("end_date")
-        ])
+    #verificando se na base de inserção existem emails repetidos com e mantendo apenas o data_cadastro atual como is_current
+    # Ordenar por email, data_cadastro para garantir um desempate
+    df_insert = df_insert.sort(["email", "data_cadastro"], descending=[False, True])
+    
+    # Criar uma contagem cumulativa dentro de cada grupo de email para garantir que apenas o primeiro registro seja 'current'
+    df_insert = df_insert.with_columns(
+        pl.col("data_cadastro").cum_count(reverse=False).over("email").alias("rank")
     )
+    # Atualizar 'is_current' e 'end_date' com base no ranking de email e data cadastro
+    df_insert = df_insert.with_columns([
+        pl.when(pl.col("rank") == 1)
+        .then(pl.lit(1))
+        .otherwise(pl.lit(0))
+        .alias("is_current"),
+    
+        pl.when(pl.col("rank") != 1)
+        .then(pl.col("effective_date"))
+        .otherwise(pl.col("end_date"))
+        .alias("end_date")
+    ]).drop("rank")
+
     #lendo a tabela para fazer o scd2
     df_table = read_table()
+    # se for vazia só insere
     if df_table.is_empty():
         data = df_insert.to_dicts()
         
@@ -212,6 +221,8 @@ def insert_dim_clients(content):
             pl.col("effective_date").alias("end_date"),
             pl.lit(0).alias("is_current")
         ])
+        print('df_update_inactive')
+        print(df_update_inactive)
         for row in df_update_inactive.to_dicts():
             client_ch.execute(
                 """
@@ -245,9 +256,11 @@ def insert_dim_clients(content):
             pl.col("effective_date").alias("end_date"),
             pl.lit(0).alias("is_current")
         ])
+        print('df_update_inactive_new')
+        print(df_update_inactive_new)
         df_insert = df_insert.join(
             df_update_inactive_new, 
-            on="email", 
+            on=["email", "data_cadastro"], 
             how="left"
         ).select([
             pl.col("nome"),
@@ -259,6 +272,8 @@ def insert_dim_clients(content):
             pl.when(pl.col("nome_right").is_not_null()).then(pl.col("end_date_right")).otherwise(pl.col("end_date")).alias("end_date"),
              pl.when(pl.col("nome_right").is_not_null()).then(pl.col("is_current_right")).otherwise(pl.col("is_current")).alias("is_current"),
         ])
+        print('df_insert')
+        print(df_insert)
         # Converta o DataFrame para um formato que pode ser enviado ao ClickHouse
         data = df_insert.to_dicts()
         print("dados a serem inseridos:")
