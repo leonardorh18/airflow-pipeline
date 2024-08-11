@@ -1,0 +1,6 @@
+boto3==1.33.13
+kafka-python==2.0.2
+clickhouse-driver==0.2.8
+Faker==18.13.0
+minio==7.2.7
+polars==0.18.4
