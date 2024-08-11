@@ -157,7 +157,7 @@ def insert_dim_clients(content):
     df_insert = pl.DataFrame(content)
     df_insert = df_insert.with_columns(
         pl.col("data_cadastro").str.strptime(pl.Date, format="%Y-%m-%d").alias("data_cadastro")
-    ).with_columns(pl.lit(date.now()).alias("effective_date"))\
+    ).with_columns(pl.lit(date.today()).alias("effective_date"))\
     .with_columns(pl.lit(date(2149, 6, 6)).alias("end_date"))\
     .with_columns(pl.lit(1).alias("is_current"))
     
@@ -216,15 +216,13 @@ def insert_dim_clients(content):
         é mantido como o dado corrente porque tem a data de cadastro maior
         
         """
-        df_joined = df_insert.join(
+        df_update_inactive_new  = df_insert.join(
             df_table, 
             on="email", 
             how="inner"
         ).filter(
             pl.col("data_cadastro").cast(pl.Date) < pl.col("data_cadastro_right").cast(pl.Date)
-        )
-        # Selecionar as colunas e renomear conforme necessário
-        df_update_inactive_new = df_joined.select([
+        ).select([
             pl.col("nome"),
             pl.col("sobrenome"),
             pl.col("idade"),
@@ -250,7 +248,8 @@ def insert_dim_clients(content):
         ])
         # Converta o DataFrame para um formato que pode ser enviado ao ClickHouse
         data = df_insert.to_dicts()
-        
+        print("dados a serem inseridos:")
+        print(data)
         # Inserir os dados no ClickHouse
         client_ch.execute(
             'INSERT INTO dim_clients (nome, sobrenome, idade, email, data_cadastro, effective_date, end_date, is_current) VALUES',

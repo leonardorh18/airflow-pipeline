@@ -73,8 +73,8 @@ def create_fake_data():
 
         clientes.append(cliente)
 
-        for cliente in clientes:
-            producer.send('clients_kafka',  value=cliente)
+    for cliente in clientes:
+        producer.send('clients_kafka',  value=cliente)
 
 
 dag = DAG('kafka_create_fake_data', description='Pipeline de Cadastro de Clientes',
