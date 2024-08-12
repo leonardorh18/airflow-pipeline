@@ -36,8 +36,23 @@ o particionamento é feito da seguinte forma:
 # ClickHouse
 
 Para viualizar os dados no ClickHouse, eu utilizei o DBeaver no localhost:8123
-No SCD2, utilizei o email como chave primaria (poderia ser Id, CPF, etc) a fim de comparar novos cadastros com cadastros ja existentes de um cliente.
+No SCD2, utilizei o email como chave primaria para aplicar o SCD2 (poderia ser Id, CPF, etc) a fim de comparar novos cadastros com cadastros ja existentes de um cliente.
 O SCD2 de um cliente é aplicado com base na data de cadastro, sempre mantendo como **is_current** o cadastro mais atual do cliente.
+```sql
+CREATE TABLE IF NOT EXISTS dim_clients (
+        surrogate_key UUID DEFAULT generateUUIDv4(),
+        nome String,
+        sobrenome String,
+        idade Int32,
+        email String,
+        data_cadastro Date,
+        effective_date Date,
+        end_date Date,
+        is_current UInt8
+    ) ENGINE = MergeTree()
+    ORDER BY (nome, sobrenome, effective_date)
+    '''
+```
 
 ![DAGs](img/clickhouse.png)
 
