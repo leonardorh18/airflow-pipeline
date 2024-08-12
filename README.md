@@ -12,8 +12,8 @@ Após entrar no Airflow, etive a execução das 2 dags:
 
 ## DAGs:
 - ### **consume_clients_kafka**:
-    A fim de exemplo, executa de um em um minuto. Possui duas tasks:
-    - **kafka_consume_topic_clients**: responsável por ler as mensagens do tópico kafka e salvar o dado bruto no s3 na camada bronze. Retorna o path do arquivo salvo no s3 para a próxima task.
+    A fim de exemplo de execução, executa de um em um minuto. Possui duas tasks:
+    - **kafka_consume_topic_clients**: responsável por ler as mensagens do tópico kafka e salvar o dado bruto no s3 na camada bronze. Retorna o path do arquivo salvo no s3 para a próxima task. É criado uma tabela no ClickHouse para controle o offset do tópico, simulando uma leitura em batch, para a próxima execução começar fo offset de onde a ultima terminou.
 
     - **read_file_from_minio**: responsável por ler o arquivo escrito na task anterior e salvar no ClickHouse aplicando SCD2.
 
@@ -42,5 +42,6 @@ Para viualizar os dados no ClickHouse, eu utilizei o DBeaver no localhost:8123
 # Melhorias:
 - Melhorar a passagem de chaves e senhas de acesso
 - Criar conexão com Kafka via airflow connection
+- Em ambiente produtivo é necessário configurar de forma mais segura as credenciais e acessos
 
 

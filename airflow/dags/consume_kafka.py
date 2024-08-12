@@ -307,8 +307,11 @@ def read_file_from_bronze(**kwargs):
     return content
 
 dag = DAG('consume_clients_kafka', description='Pipeline de ingestão',
-          schedule_interval='* * * * *',
-          start_date=datetime(2024, 8, 9), catchup=False)
+        schedule_interval='* * * * *',
+        start_date=datetime(2024, 8, 9), 
+        max_active_runs=1,  # Permite apenas uma execução ativa por vez
+        concurrency=1,
+        catchup=False)
 
 
 consume_task = PythonOperator(

@@ -76,7 +76,7 @@ services:
     command: >
       bash -c "
         airflow db init &&
-        airflow users create --role Admin --username admin --email admin --firstname admin --lastname admin --password admin &&
-        airflow connections add my_s3_conn  --conn-type aws  --conn-login 'minioadmin'  --conn-password 'minioadmin' --conn-extra '{\"aws_access_key_id\":\"minioadmin\",\"aws_secret_access_key\":\"minioadmin\",\"region_name\":\"us-east-1\",\"endpoint_url\":\"http://minio:9000\"}'   &&
+        (airflow users list | grep -q 'admin' || airflow users create --role Admin --username admin --email admin --firstname admin --lastname admin --password admin) &&
+        (airflow connections get my_s3_conn || airflow connections add my_s3_conn  --conn-type aws  --conn-login 'minioadmin'  --conn-password 'minioadmin' --conn-extra '{\"aws_access_key_id\":\"minioadmin\",\"aws_secret_access_key\":\"minioadmin\",\"region_name\":\"us-east-1\",\"endpoint_url\":\"http://minio:9000\"}') &&
         airflow standalone
-        "
+      "
