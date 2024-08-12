@@ -15,5 +15,3 @@ COPY requirements.txt .
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
-# Criar diretório para DAGS
-COPY ./dags /usr/local/airflow/dags
