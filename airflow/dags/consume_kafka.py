@@ -106,6 +106,7 @@ def consume_kafka():
             message_list.append(json.loads(message.value))
         if len(message_list) > 0:
             file = insert_bronze(message_list)
+            print(f"==== ULTIMO OFFSET {message.offset}")
             topic_controll.insert_offset(message.offset)
             print(f"------------------ARQUIVO SALVO {file}")
             return file
