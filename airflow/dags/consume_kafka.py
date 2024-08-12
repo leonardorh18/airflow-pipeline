@@ -8,7 +8,6 @@ from minio.error import S3Error
 import json
 from io import BytesIO
 import os
-
 from kafka import KafkaConsumer
 TOPIC = 'clients_kafka'
 BOOTSTRAP = 'kafka:9092'
@@ -324,4 +323,5 @@ read_file_task = PythonOperator(
     dag=dag
 )
 
-consume_task >> read_file_task
+
+consume_task >> read_file_task 

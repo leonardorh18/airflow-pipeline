@@ -70,9 +70,20 @@ services:
       - kafka
       - minio
       - clickhouse
+    environment:
+      - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=True
+      - AIRFLOW__LOGGING__REMOTE_LOGGING=True
+      - AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER=s3://bronze-layer
+      - AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID=MinIO
+      - AIRFLOW__SECRETS__BACKEND_CONF={"aws_access_key_id":"minioadmin","aws_secret_access_key":"minioadmin","region_name":"us-east-1","endpoint_url":"http://minio:9000"}
     ports:
       - "8080:8080"
     volumes:
-      - ./dags:/dags
+      - ./airflow/dags:/opt/airflow/dags
     networks:
       - app-tier
+    command: >
+      bash -c "
+        airflow db init &&
+        airflow users create --role Admin --username admin --email admin --firstname admin --lastname admin --password admin &&
+        airflow standalone"
