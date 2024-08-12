@@ -24,7 +24,7 @@ Após entrar no Airflow, ative a execução das 2 dags:
 ## Visualização dos dados
 Para acessar o MiniIO acesse: http://localhost:9001/browser com **usuário: minioadmin e senha: minioadmin**.
 
-Os logs da execução das DAGs são armazenados no bucket bronze_layer via configuração do Conector nas configurações do Airflow.
+Os logs da execução das DAGs são armazenados no bucket bronze_layer via configuração do Conector nas configurações do Airflow no docker-compose.
 
 Os dados brutos são salvos em .json no bucket bronze_layer
 ![DAGs](img/bucket.png)
