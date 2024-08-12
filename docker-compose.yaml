@@ -73,8 +73,8 @@ services:
     environment:
       - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=True
       - AIRFLOW__LOGGING__REMOTE_LOGGING=True
-      - AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER=s3://bronze-layer
-      - AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID=MinIO
+      - AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER=s3://bronze-layer/logs
+      - AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID=my_s3_conn
       - AIRFLOW__SECRETS__BACKEND_CONF={"aws_access_key_id":"minioadmin","aws_secret_access_key":"minioadmin","region_name":"us-east-1","endpoint_url":"http://minio:9000"}
     ports:
       - "8080:8080"
@@ -86,4 +86,6 @@ services:
       bash -c "
         airflow db init &&
         airflow users create --role Admin --username admin --email admin --firstname admin --lastname admin --password admin &&
-        airflow standalone"
+        airflow connections add my_s3_conn --conn-type aws --conn-login 'minioadmin' --conn-password 'minioadmin' --conn-extra '{"aws_access_key_id":"minioadmin","aws_secret_access_key":"minioadmin","endpoint_url":"http://minio:9000"}' &&
+        airflow standalone
+        "

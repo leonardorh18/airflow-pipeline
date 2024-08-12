@@ -5,3 +5,4 @@ Faker==18.13.0
 minio==7.2.7
 polars==0.18.4
 six
+apache-airflow-providers-amazon
