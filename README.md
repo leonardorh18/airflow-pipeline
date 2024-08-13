@@ -38,6 +38,7 @@ o particionamento é feito da seguinte forma:
 Para viualizar os dados no ClickHouse, eu utilizei o DBeaver no localhost:8123
 No SCD2, utilizei o email como chave primaria para aplicar o SCD2 (poderia ser Id, CPF, etc) a fim de comparar novos cadastros com cadastros ja existentes de um cliente.
 O SCD2 de um cliente é aplicado com base na data de cadastro, sempre mantendo como **is_current** o cadastro mais atual do cliente.
+(Não é necessário rodar o script abaixo, apenas exemplo do DDL)
 ```sql
 CREATE TABLE IF NOT EXISTS dim_clients (
         surrogate_key UUID DEFAULT generateUUIDv4(),
