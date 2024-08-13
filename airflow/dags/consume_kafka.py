@@ -77,7 +77,7 @@ def insert_bronze(data):
 
 
 def consume_kafka():
-    print(f"CHAVES: SECRET {SECRET_KEY}, ACCESS: {ACCESS_KEY}")
+    #print(f"CHAVES: SECRET {SECRET_KEY}, ACCESS: {ACCESS_KEY}")
     try:
         consumer = KafkaConsumer(
             bootstrap_servers=[BOOTSTRAP],  # Servidor Kafka
@@ -111,6 +111,7 @@ def consume_kafka():
             print(f"------------------ARQUIVO SALVO {file}")
             return file
         else:
+            print("=== Nenhum dado para ler!")
             return None
     
     except Exception as e:
