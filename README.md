@@ -13,7 +13,7 @@ Após entrar no Airflow, ative a execução das 2 dags:
 ## DAGs:
 - ### **consume_clients_kafka**:
     A fim de exemplo de execução, executa de um em um minuto. Possui duas tasks:
-    - **kafka_consume_topic_clients**: responsável por ler as mensagens do tópico kafka **clients_kafka** e salvar o dado bruto no s3 na camada bronze. Retorna o path do arquivo salvo no s3 para a próxima task. É criado uma tabela no ClickHouse para controle o offset do tópico, simulando uma leitura em batch, para a próxima execução começar fo offset de onde a ultima terminou.
+    - **kafka_consume_topic_clients**: responsável por ler as mensagens do tópico kafka **clients_kafka** e salvar o dado bruto no s3 na camada bronze. Retorna o path do arquivo salvo no s3 para a próxima task. É criado uma tabela no ClickHouse para controle do offset do tópico, simulando uma leitura em batch, para a próxima execução começar no offset de onde a ultima terminou.
 
     - **read_file_from_minio**: responsável por ler o arquivo escrito na task anterior e salvar no ClickHouse aplicando SCD2. É utilizado **polars** para manipular os dados (cheguei a testar duckdb também).
 
